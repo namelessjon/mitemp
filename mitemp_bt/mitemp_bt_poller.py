@@ -1,7 +1,7 @@
 """"
 Read data from Mi Temp environmental (Temp and humidity) sensor.
 """
-
+import re
 from datetime import datetime, timedelta
 import logging
 from threading import Lock
@@ -172,25 +172,36 @@ class MiTempBtPoller(object):
 
         """
         data = self._cache
+        data = self._convert_bytes(data)
 
-        res = dict()
-        res[MI_HUMIDITY] = float(data[9:13])
-        res[MI_TEMPERATURE] = float(data[2:6])
-        return res
+        m = re.match(r"T=(-?\d+(?:\.\d+)?)\s+H=(\d+(?:\.\d+))", data)
 
-    @staticmethod
-    def _format_bytes(raw_data):
+        if m:
+            res = dict()
+            res[MI_HUMIDITY] = float(m[2])
+            res[MI_TEMPERATURE] = float(m[1])
+            return res
+
+    @classmethod
+    def _format_bytes(cls, raw_data):
         """Prettyprint a byte array."""
         if raw_data is None:
             return 'None'
         return ' '.join([format(c, "02x") for c in raw_data]).upper()
+
+    @staticmethod
+    def _convert_bytes(raw_data):
+        if not isinstance(raw_data, str):
+            return raw_data.decode("utf-8").strip(' \n\t\0')
+        else:
+            return raw_data
 
     def handleNotification(self, handle, raw_data):  # pylint: disable=unused-argument,invalid-name
         """ gets called by the bluepy backend when using wait_for_notification
         """
         if raw_data is None:
             return
-        data = raw_data.decode("utf-8").strip(' \n\t')
+        data = self._convert_bytes(raw_data)
         self._cache = data
         self._check_data()
         if self.cache_available():

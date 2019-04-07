@@ -22,3 +22,21 @@ class KNXConversionTest(unittest.TestCase):
         poller._last_read = datetime.now()
         self.assertEqual(poller._parse_data()[MI_TEMPERATURE], 25.6)
         self.assertEqual(poller._parse_data()[MI_HUMIDITY], 23.6)
+
+    def test_parsing_short_temp(self):
+        """Does the Mi TEMP BT data parser works correctly?"""
+        poller = MiTempBtPoller(None, MockBackend)
+        data = b'T=2.4 H=23.6\0'.decode("utf-8").strip(' \n\t\0')
+        poller._cache = data
+        poller._last_read = datetime.now()
+        self.assertEqual(poller._parse_data()[MI_TEMPERATURE], 2.4)
+        self.assertEqual(poller._parse_data()[MI_HUMIDITY], 23.6)
+
+    def test_parsing_negative_temp(self):
+        """Does the Mi TEMP BT data parser works correctly?"""
+        poller = MiTempBtPoller(None, MockBackend)
+        data = b'T=-22.4 H=23.6\0'
+        poller._cache = data
+        poller._last_read = datetime.now()
+        self.assertEqual(poller._parse_data()[MI_TEMPERATURE], -22.4)
+        self.assertEqual(poller._parse_data()[MI_HUMIDITY], 23.6)
